@@ -1,0 +1,133 @@
+/**
+ * All of the CSS for your admin-specific functionality should be
+ * included in this file.
+ */
+
+ .wdm-tt-container {
+    max-width: 80%;
+    margin: 50px auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    background-color: #f9f9f9;
+}
+
+.wdm-tt-heading {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #333;
+    margin-bottom: 30px;
+}
+
+.wdm-tt-label , .wdm-git-label,.wdm-sonar-label, .wdm-spinup-label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #555;
+    font-weight: bold;
+}
+
+.wdm-tt-input , .wdm-git-input, .wdm-sonar-input, .wdm-spinup-input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+.wdm-tt-button {
+    padding: 10px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.wdm-tt-button:hover {
+    background-color: #0056b3;
+}
+
+/* Container styling */
+.wdm-team-container {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    margin: 20px auto;
+}
+
+/* Heading styling */
+.wdm-team-heading {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+}
+
+/* Table styling */
+#wdm-team-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+#wdm-team-table th,
+#wdm-team-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+#wdm-team-table th {
+    background-color: #f4f4f4;
+    color: #555;
+}
+
+#wdm-team-table input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Button styling */
+#wdm-add-team-button,
+.wdm-save-teams-button {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 16px;
+    color: #fff;
+    background-color: #0073aa;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+#wdm-add-team-button:hover,
+.wdm-save-teams-button:hover {
+    background-color: #005177;
+}
+
+.wdm-remove-team-button {
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #fff;
+    background-color: #d9534f;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.wdm-remove-team-button:hover {
+    background-color: #c9302c;
+}
+
+

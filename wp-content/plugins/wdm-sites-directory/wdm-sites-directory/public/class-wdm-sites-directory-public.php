@@ -177,13 +177,8 @@ class Wdm_Sites_Directory_Public
             $spinup_link_error_message  = '';
             $spin_up_id                 = '';
 
-
             $combined_name = $client_name . ' - ' . $project_name;
             $combined_slug_name = str_replace(' ', '-', $client_name . ' - ' . $project_name);
-
-            if ($git_link) {
-                $combined_slug_name = $this->getRepoName('https://github.com/WisdmLabs/test---test-seventy-two');
-            }
 
             if (! $tracking_time_link && $client_name && $project_name && $to_add_on_tracking_time == 'true') {
                 $if_added = $this->addProject($combined_name, $team_name);
@@ -196,25 +191,13 @@ class Wdm_Sites_Directory_Public
                     $tracking_time_link = 'https://pro.trackingtime.co/#/project/' . $project_id . '/list';
                 }
             }
-            $git_publicKeys = '';
+
             if (! $git_link && $client_name && $project_name && $to_add_git_repo == 'true') {
                 error_log('create git repo');
                 $git_link = $this->createGitRepo($combined_slug_name, $team_name, $sme_name);
-                $git_publicKeys = $this->getGitRepoKeys($combined_slug_name);
                 error_log('git repo url ' . $git_link);
                 if (! $git_link) {
                     $git_repo_error_message = 'Something went wrong';
-                }
-            }
-            if ($git_publicKeys && isset($git_publicKeys['key'])) {
-                $gh_bot_token = $this-> encryptWithPublicKey($git_publicKeys['key'], get_option('github_api_token'));
-                if ($claude_api_key && $gh_bot_token) {
-                    $claude_api_key_added = $this->createGitRepoSecret($git_publicKeys['key_id'], $combined_slug_name, 'CLAUDE_API_KEY', $claude_api_key);
-                    $gh_bot_token_added = $this->createGitRepoSecret($git_publicKeys['key_id'], $combined_slug_name, 'GH_BOT_TOKEN', $gh_bot_token);
-                    if ($claude_api_key_added && $gh_bot_token_added) {
-                        $git_phpcs_yml_file_addded = $this->addFilesToGitRepo($combined_slug_name, 'phpcs_yml');
-                        $git_phpcs_claude_yml_file_addded = $this->addFilesToGitRepo($combined_slug_name, 'phpcs_claude_yml');
-                    }
                 }
             }
 
@@ -223,7 +206,6 @@ class Wdm_Sites_Directory_Public
                 if ($spin_up_id) {
                     $spinup_link = 'https://spinupwp.app/wisdmlabs-sme/sites/' . $spin_up_id;
                 }
-                
             }
             error_log('add sonar ' . $to_add_sonar_project);
             if (! $sonar_link && $client_name && $project_name && $to_add_sonar_project == 'true') {
@@ -233,7 +215,7 @@ class Wdm_Sites_Directory_Public
                     $sonar_project_secret = $this->createSonarProjectSecret($sonar_key);
 
                     if ($sonar_project_secret) {
-                        
+                        $git_publicKeys = $this->getGitRepoKeys($sonar_key);
                         if ($git_publicKeys && isset($git_publicKeys['key'])) {
                             $sonar_token_value = $this-> encryptWithPublicKey($git_publicKeys['key'], $sonar_project_secret);
                             $sonar_host_url_value = $this-> encryptWithPublicKey($git_publicKeys['key'], "http://codequality.wisdmlabs.net:9000");
@@ -242,13 +224,16 @@ class Wdm_Sites_Directory_Public
                                 $git_sonar_host_url_added = $this->createGitRepoSecret($git_publicKeys['key_id'], $sonar_key, 'SONAR_HOST_URL', $sonar_host_url_value);
                                 if ($git_sonar_token_added && $git_sonar_host_url_added) {
                                     $git_sonar_file_addded = $this->addFilesToGitRepo($sonar_key, 'sonar');
-                                    $git_yml_file_addded = $this->addFilesToGitRepo($sonar_key, 'build_yml');
+                                    $git_yml_file_addded = $this->addFilesToGitRepo($sonar_key, 'yml');
                                 }
                             }
                         }
                     }
+
+
                 }
                 error_log('sonar url ' . $sonar_link);
+
             }
 
             global $wpdb;  // Access the global WordPress database object.
@@ -382,15 +367,9 @@ class Wdm_Sites_Directory_Public
 
 		if ($file_name == 'sonar') {
 			$apiUrl = "https://api.github.com/repos/WisdmLabs/$project_name/contents/sonar-project.properties?ref=$branch";
-		} else if ($file_name == 'build_yml') {
+		} else {
 			$apiUrl = "https://api.github.com/repos/WisdmLabs/$project_name/contents/.github/workflows/build.yml?ref=$branch";
 		}
-        else if ($file_name == 'phpcs_yml') {
-            $apiUrl = "https://api.github.com/repos/WisdmLabs/$project_name/contents/.github/workflows/phpcs.yml?ref=$branch";
-        }
-        else if ($file_name == 'phpcs_claude_yml') {
-            $apiUrl = "https://api.github.com/repos/WisdmLabs/$project_name/contents/.github/workflows/wpcs-claude.yml?ref=$branch";
-        }
 
 		$bearerToken = get_option('github_api_token'); // GitHub token
 
@@ -398,7 +377,7 @@ class Wdm_Sites_Directory_Public
 		if ($file_name == 'sonar') {
 			$fileContent = base64_encode("sonar.projectKey=$project_name");
 			$commitMessage = "Adding sonar properties file";
-		} else if ($file_name == 'build_yml') {
+		} else {
 			$commitMessage = "Adding build.yml file";
 			
 			$fileContent = "name: Build
@@ -430,237 +409,6 @@ jobs:
 ";
 			$fileContent = base64_encode($fileContent);
 		}
-        else if ($file_name == 'phpcs_yml') {
-            $commitMessage = "Adding phpcs.yml file";
-			
-            $fileContent = 'name: Code Review
-
-
-on:
-  pull_request:
-    branches:
-      - "**"
-    paths:
-      - "!(library/**)"
-      - "**.php"
-
-
-permissions:
-  contents: write
-  pull-requests: write
-
-
-jobs:
-  runPHPCSInspection:
-    name: Run PHPCS inspection
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: Run PHPCS inspection
-        uses: rtCamp/action-phpcs-code-review@v3
-        env:
-          GH_BOT_TOKEN: ${{ secrets.GH_BOT_TOKEN }}
-          SKIP_FOLDERS: "library,.github,wdm-automatic-credit-card-customization/vendor"
-          PHPCS_SNIFFS_EXCLUDE: "*.css,*.js"
-        with:
-          args: "WordPress,WordPress-Core,WordPress-Docs"
-';
-			$fileContent = base64_encode($fileContent);
-        }
-        else if ($file_name == 'phpcs_claude_yml') {
-            $commitMessage = "Adding wpcs-claude.yml file";
-			$fileContent = <<<'YAML'
-name: Claude PHP Code Review
-
-
-on:
-  pull_request:
-    branches:
-      - "**"
-    paths:
-      - "**.php"
-
-
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-
-
-jobs:
-  claude-review:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-
-      - name: Analyze PHP files with Claude
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
-        run: |
-          escape_json() {
-            local content="$1"
-            content="${content//\\/\\\\}"
-            content="${content//\"/\\\"}"
-            content="${content//[$'\t']/\\t}"
-            content="${content//$'\n'/\\n}"
-            content="${content//[$'\r']/\\r}"
-            echo "$content"
-          }
-
-
-          call_claude() {
-            local raw_content="$1"
-            local escaped_content=$(escape_json "$raw_content")
-           
-            local json_payload='{
-              "model": "claude-3-5-sonnet-20241022",
-              "max_tokens": 1024,
-              "messages": [{
-                "role": "user",
-                "content": "'"$escaped_content"'"
-              }]
-            }'
-           
-            local retries=2
-            local wait_time=2
-            local success=0
-            local response
-            local status_code
-
-
-            for (( i=0; i<retries; i++ )); do
-              echo "Sending request to Claude API... Attempt $((i+1))"
-             
-              response=$(curl -s -w "\n%{http_code}" \
-                https://api.anthropic.com/v1/messages \
-                -H "Content-Type: application/json" \
-                -H "x-api-key: $ANTHROPIC_API_KEY" \
-                -H "anthropic-version: 2023-06-01" \
-                -d "$json_payload" 2>&1)
-             
-              status_code=$(echo "$response" | tail -n1)
-              local body=$(echo "$response" | sed '$d')
-
-
-              echo "Response Status Code: $status_code"
-             
-              if [ "$status_code" = "200" ]; then
-                local review_content=$(echo "$body" | jq -r '.content[0].text // empty')
-                if [ ! -z "$review_content" ]; then
-                  echo "$review_content"
-                  success=1
-                  break
-                else
-                  echo "Error: Empty response content" >&2
-                  return 1
-                fi
-              elif [ "$status_code" = "429" ] || [ "$status_code" = "529" ]; then
-                if [ $i -lt $((retries-1)) ]; then
-                  echo "Rate limited. Retrying in $wait_time seconds..."
-                  sleep $wait_time
-                else
-                  echo "Rate limited. Skipping this file after $((i+1)) attempts."
-                fi
-              else
-                echo "Error: API call failed with status $status_code" >&2
-                echo "Response body: $body" >&2
-                return 1
-              fi
-            done
-
-
-            if [ "$success" -ne 1 ]; then
-              echo "Error: API call failed after $retries attempts" >&2
-              return 1
-            fi
-          }
-
-
-          CURRENT_SHA=$GITHUB_SHA
-          PREVIOUS_SHA=$(git rev-parse HEAD^)
-
-
-          CHANGED_FILES=$(git diff --name-only $PREVIOUS_SHA $CURRENT_SHA | grep '\.php$' || true)
-
-
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "No PHP files changed in this commit."
-            exit 0
-          fi
-
-
-          # Define the global variable for the prompt
-          PROMPT_TEXT="consider yourself a WordPress plugin code reviewer. Please perform a detailed code review strictly according to WordPress coding standards, do not use modern PHP standards or any other standards. Identify all issues, including structure, formatting, security, and any other relevant guidelines, and list every instance without skipping. Each issue should include the line number for easy identification. If an issue type appears multiple times, provide a detailed description with line numbers for each occurrence. The review should capture all details to ensure thorough compliance with WordPress standards. list each and every issue, do not say multiple instances found."
-
-
-          for file in $CHANGED_FILES; do
-            if [ -f "$file" ]; then
-              echo "----------------------------------------"
-              echo "Processing PHP file: $file"
-              echo "----------------------------------------"
-             
-              FILE_DIFF=$(git diff $PREVIOUS_SHA $CURRENT_SHA -- "$file")
-              echo "Diff size: ${#FILE_DIFF} characters"
-             
-              CONTENT=$(cat "$file")
-              echo "File size: ${#CONTENT} characters"
-             
-              # Use the global variable PROMPT_TEXT in the prompt
-              PROMPT="$PROMPT_TEXT
-
-
-              Here is the complete current file:
-              $CONTENT"
-
-
-              echo "Prompt prepared. Length: ${#PROMPT} characters"
-             
-              CLAUDE_RESPONSE=$(call_claude "$PROMPT")
-              API_STATUS=$?
-             
-              if [ $API_STATUS -eq 0 ]; then
-                echo "Got response from Claude..."
-               
-                ESCAPED_REVIEW=$(escape_json "$CLAUDE_RESPONSE")
-               
-                echo "Creating GitHub issue..."
-                ISSUE_RESPONSE=$(curl -s -X POST \
-                  -H "Authorization: token $GITHUB_TOKEN" \
-                  -H "Accept: application/vnd.github.v3+json" \
-                  "https://api.github.com/repos/$GITHUB_REPOSITORY/issues" \
-                  -d '{
-                    "title": "Code Review: '"$file"'",
-                    "body": "Code review for commit '"$GITHUB_SHA"'\n\n'"$ESCAPED_REVIEW"'",
-                    "labels": ["code-review", "automated"]
-                  }')
-               
-                ISSUE_URL=$(echo "$ISSUE_RESPONSE" | jq -r '.html_url // empty')
-                if [ ! -z "$ISSUE_URL" ]; then
-                  echo "Successfully created issue: $ISSUE_URL"
-                else
-                  echo "Error creating issue. Response:"
-                  echo "$ISSUE_RESPONSE"
-                fi
-              else
-                echo "Error: Failed to get valid response from Claude"
-                echo "Full error response:"
-                echo "$CLAUDE_RESPONSE"
-              fi
-              echo "----------------------------------------"
-              echo "Completed processing $file"
-              echo "----------------------------------------"
-            fi
-          done
-YAML;
-            
-			$fileContent = base64_encode($fileContent);
-        }
 
 		// Step 1: Check if the file exists in the `release` branch to get its SHA
 		$ch = curl_init();
@@ -1327,6 +1075,7 @@ YAML;
         .wdm-dropdown {
             position: relative;
             display: inline-block;
+            width: 200px;
         }
 
         .wdm-dropdown-toggle {
@@ -1408,22 +1157,6 @@ YAML;
             }
         });
     </script> -->
-    <div class="wdm-dropdown">
-    <div class="wdm-dropdown-toggle">Select Columns to Display</div>
-    <div class="wdm-dropdown-menu">
-        <label><input type="checkbox" value="1" checked> Site Name</label>
-        <label><input type="checkbox" value="2" checked> SME Name</label>
-        <label><input type="checkbox" value="3" checked> Developer Name</label>
-        <label><input type="checkbox" value="4" checked> Client Name</label>
-        <label><input type="checkbox" value="5" checked> Project Name</label>
-        <label><input type="checkbox" value="6" checked> Tracking Time Link</label>
-        <label><input type="checkbox" value="7" checked> Git Link</label>
-        <label><input type="checkbox" value="8" checked> Sonar Link</label>
-        <label><input type="checkbox" value="9" checked> Spinup Link</label>
-        <label><input type="checkbox" value="10" checked> Team Name</label>
-        <label><input type="checkbox" value="11" checked> Actions</label>
-    </div>
-</div>
     </select>
 		<table id="wdm-datatable" class="wdm-datatable display" cellspacing="0" width="100%">
 			<thead>
@@ -1768,17 +1501,6 @@ YAML;
         error_log($encryptedBase64);
         return $encryptedBase64;
     }
-    public function getRepoName($url) {
-        // Parse the URL to extract the path
-        $parsedUrl = parse_url($url, PHP_URL_PATH);
-        
-        // Explode the path to get segments
-        $segments = explode('/', trim($parsedUrl, '/'));
-        
-        // The last segment should be the repository name
-        return end($segments);
-    }
-    
     /**
      * Register the JavaScript for the public-facing side of the site.
      *
